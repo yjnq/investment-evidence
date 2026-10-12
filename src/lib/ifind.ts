@@ -10,7 +10,8 @@ export function decodeToolJson(text:string,layer:string):unknown {
  const fenced=trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
  const payload=fenced?fenced[1]:trimmed;
  try{return JSON.parse(payload);}catch{
-  console.error('ifind_json_invalid',{layer,shape:fenced?'fenced':trimmed.startsWith('{')?'object':trimmed.startsWith('[')?'array':'other',characters:trimmed.length});
+  const hint=trimmed.replace(/[^\u3400-\u9fff\s。，：；！？（）]/g,'').slice(0,120);
+  console.error('ifind_json_invalid',{layer,shape:fenced?'fenced':trimmed.startsWith('{')?'object':trimmed.startsWith('[')?'array':'other',characters:trimmed.length,hint});
   throw new Error(`资讯接口响应校验失败（${layer}）：内容不是完整JSON，请重新检索`);
  }
 }
