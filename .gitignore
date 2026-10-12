@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.data/
+*.tsbuildinfo
+test-results/
+# Local handoff and full vendor responses are not public product artifacts.
+/数据接入验证/
+/项目开发交接与分析框架.md
+next-env.d.ts

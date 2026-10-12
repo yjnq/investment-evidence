@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.env*
+.data
+数据接入验证
+*.tsbuildinfo

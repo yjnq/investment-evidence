@@ -1,0 +1,105 @@
+{
+  "testedAt": "2026-10-12T03:04:28.889Z",
+  "checks": [
+    "部分金额更正",
+    "重复材料幂等",
+    "通知去重",
+    "不同交易分离",
+    "过期幂等",
+    "历史快照不变",
+    "非法输入拒绝",
+    "真实模型案例已保存"
+  ],
+  "eventCount": 4,
+  "materialCount": 7,
+  "versionCount": 8,
+  "noticeCount": 4,
+  "realModelTasks": [
+    {
+      "id": "7d6e09bf-db04-4396-add6-4e5770a8f899",
+      "model": "gpt-5.6-sol",
+      "status": "success",
+      "createdAt": "2026-10-12T02:50:53.318Z",
+      "finishedAt": "2026-10-12T02:50:59.018Z"
+    },
+    {
+      "id": "ed43e130-06dc-4fcf-99dd-f7ed7b139384",
+      "model": "gpt-5.6-sol",
+      "status": "success",
+      "createdAt": "2026-10-12T03:00:11.029Z",
+      "finishedAt": "2026-10-12T03:00:27.926Z"
+    }
+  ],
+  "realCaseClaims": [
+    {
+      "id": "0dde0bd1-e0b7-4164-b340-2a2af0ae9361",
+      "key": "证监会同意国泰君安以新增5985871332股股份吸收合并海通证券的注册申请",
+      "text": "证监会同意国泰君安以新增5,985,871,332股股份吸收合并海通证券的注册申请。",
+      "type": "fact",
+      "quote": "一、同意国泰君安以新增5,985,871,332股股份吸收合并海通证券的注册申请。",
+      "origin": "https://www.csrc.gov.cn/csrc/c106395/c7534421/content.shtml",
+      "status": "已确认",
+      "weight": "直接披露 · 一手来源；仅确认所引述范围",
+      "relation": "support",
+      "materialId": "1442cda9-9120-46d6-b076-2b29d0108f7d",
+      "validUntil": null,
+      "replacesKey": null
+    },
+    {
+      "id": "ee8a9111-3031-4b13-b525-1fff13746001",
+      "key": "证监会同意国泰君安发行股份募集不超过100亿元配套资金的注册申请",
+      "text": "证监会同意国泰君安发行股份募集配套资金不超过100亿元的注册申请。",
+      "type": "fact",
+      "quote": "二、同意国泰君安发行股份募集配套资金不超过100亿元的注册申请。",
+      "origin": "https://www.csrc.gov.cn/csrc/c106395/c7534421/content.shtml",
+      "status": "已确认",
+      "weight": "直接披露 · 一手来源；仅确认所引述范围",
+      "relation": "supplement",
+      "materialId": "1442cda9-9120-46d6-b076-2b29d0108f7d",
+      "validUntil": null,
+      "replacesKey": null
+    },
+    {
+      "id": "65b20021-477c-46c1-abbc-1bcb834bb42d",
+      "key": "证监会核准国泰君安吸收合并海通证券",
+      "text": "证监会核准国泰君安吸收合并海通证券。",
+      "type": "fact",
+      "quote": "三、核准国泰君安吸收合并海通证券。",
+      "origin": "https://www.csrc.gov.cn/csrc/c106395/c7534421/content.shtml",
+      "status": "已确认",
+      "weight": "直接披露 · 一手来源；仅确认所引述范围",
+      "relation": "support",
+      "materialId": "1442cda9-9120-46d6-b076-2b29d0108f7d",
+      "validUntil": null,
+      "replacesKey": null
+    },
+    {
+      "id": "b4eeaf3b-52fa-4322-81b0-5e092917ff83",
+      "key": "吸收合并完成后海通证券依法解散",
+      "text": "吸收合并完成后，海通证券依法解散。",
+      "type": "fact",
+      "quote": "吸收合并完成后，海通证券依法解散",
+      "origin": "https://www.csrc.gov.cn/csrc/c106395/c7534421/content.shtml",
+      "status": "已确认",
+      "weight": "直接披露 · 一手来源；仅确认所引述范围",
+      "relation": "supplement",
+      "materialId": "1442cda9-9120-46d6-b076-2b29d0108f7d",
+      "validUntil": null,
+      "replacesKey": null
+    },
+    {
+      "id": "29d1b4a1-aa17-48d9-8156-9132d30bfc0a",
+      "key": "吸收合并完成后原海通证券分支机构变更为国泰君安分支机构",
+      "text": "吸收合并完成后，原海通证券分支机构变更为国泰君安分支机构。",
+      "type": "fact",
+      "quote": "原海通证券分支机构变更为国泰君安分支机构。",
+      "origin": "https://www.csrc.gov.cn/csrc/c106395/c7534421/content.shtml",
+      "status": "已确认",
+      "weight": "直接披露 · 一手来源；仅确认所引述范围",
+      "relation": "supplement",
+      "materialId": "1442cda9-9120-46d6-b076-2b29d0108f7d",
+      "validUntil": null,
+      "replacesKey": null
+    }
+  ]
+}
