@@ -9,3 +9,17 @@ describe('资讯候选响应边界',()=>{
  it('拒绝结构变化，不返回假成功',()=>{expect(()=>parseNoticeResponse({html:'error'},'2025-01-01','2025-01-31')).toThrow();});
  it('拒绝倒置窗口及无效日期',()=>{expect(searchSchema.safeParse({query:'国泰君安',start:'2025-02-30',end:'2025-03-31'}).success).toBe(false);expect(searchSchema.safeParse({query:'国泰君安',start:'2025-03-01',end:'2025-02-01'}).success).toBe(false);});
 });
+
+import {afterEach,vi} from 'vitest';
+import {searchNotices} from '../src/lib/ifind';
+afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
+describe('MCP会话响应',()=>{
+ it('初始化通知可以用纯文本确认，不应阻断后续查询',async()=>{
+  vi.stubEnv('IFIND_AUTH_TOKEN','test-only-token');
+  const mock=vi.fn().mockResolvedValueOnce(new Response('{"result":{}}',{headers:{'mcp-session-id':'test-session'}})).mockResolvedValueOnce(new Response('Accepted',{status:202})).mockResolvedValueOnce(new Response(JSON.stringify(wrap([{'公告标题':'测试公告','公告片段内容':'测试原文','日期':'2025-01-02'}]))));
+  vi.stubGlobal('fetch',mock);
+  const result=await searchNotices({query:'测试',start:'2025-01-01',end:'2025-01-31'});
+  expect(result.candidates).toHaveLength(1);
+  expect(mock.mock.calls[2][1].headers['Mcp-Session-Id']).toBe('test-session');
+ });
+});
