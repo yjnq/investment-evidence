@@ -23,3 +23,22 @@ describe('MCP会话响应',()=>{
   expect(mock.mock.calls[2][1].headers['Mcp-Session-Id']).toBe('test-session');
  });
 });
+
+describe('公告结构化文本兼容',()=>{
+ it('接受完整JSON代码围栏，不修补或猜测内容',()=>{
+  const records=[{'公告标题':'公告','公告片段内容':'片段','日期':'2025-01-02'}];
+  const raw={result:{content:[{type:'text',text:'```json\n'+JSON.stringify({code:1,data:'```json\n'+JSON.stringify(records)+'\n```'})+'\n```'}]}};
+  expect(parseNoticeResponse(raw,'2025-01-01','2025-01-31').candidates).toHaveLength(1);
+ });
+ it('单独说明文本不拼接到JSON业务结果中',()=>{
+  const raw=wrap([{'公告标题':'公告','公告片段内容':'片段'}]);raw.result.content.push({type:'text',text:'仅返回公告候选片段，请核对原文'});
+  expect(parseNoticeResponse(raw,'2025-01-01','2025-01-31').candidates).toHaveLength(1);
+ });
+ it('拒绝多个业务结果，避免取错信封',()=>{
+  const raw=wrap([]);raw.result.content.push(raw.result.content[0]);expect(()=>parseNoticeResponse(raw,'2025-01-01','2025-01-31')).toThrow('不唯一');
+ });
+ it('拒绝尾随指令与截断JSON，不把失败降级为无数据',()=>{
+  const raw={result:{content:[{type:'text',text:JSON.stringify({code:1,data:'[{"公告标题":"截断"'})}]}};
+  expect(()=>parseNoticeResponse(raw,'2025-01-01','2025-01-31')).toThrow('完整JSON');
+ });
+});

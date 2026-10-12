@@ -5,13 +5,29 @@ export const searchSchema=z.object({query:z.string().trim().min(2).max(200),star
 const endpoint='https://api-mcp.51ifind.com:8643/ds-mcp-servers/hexin-ifind-ds-news-mcp';
 export type Candidate={title:string;text:string;publishedAt:string|null;url:string|null};
 let inFlight=false;
+export function decodeToolJson(text:string,layer:string):unknown {
+ const trimmed=text.trim();
+ const fenced=trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
+ const payload=fenced?fenced[1]:trimmed;
+ try{return JSON.parse(payload);}catch{
+  console.error('ifind_json_invalid',{layer,shape:fenced?'fenced':trimmed.startsWith('{')?'object':trimmed.startsWith('[')?'array':'other',characters:trimmed.length});
+  throw new Error(`资讯接口响应校验失败（${layer}）：内容不是完整JSON，请重新检索`);
+ }
+}
 export function parseNoticeResponse(raw:unknown,start:string,end:string){
  const outer=z.object({result:z.object({isError:z.boolean().optional(),content:z.array(z.object({type:z.string(),text:z.string().optional()}))})}).parse(raw);
  if(outer.result.isError)throw new Error('资讯接口业务失败');
- const text=outer.result.content.filter(x=>x.type==='text').map(x=>x.text??'').join('\n');
- const envelope=z.object({code:z.number(),data:z.unknown()}).parse(JSON.parse(text));
+ const envelopes:unknown[]=[];
+ for(const block of outer.result.content){
+  if(block.type!=='text'||!block.text)continue;
+  if(!/^(?:\{|\[|```)/.test(block.text.trim()))continue;
+  const value=decodeToolJson(block.text,'business-envelope');
+  if(value&&typeof value==='object'&&'code' in value)envelopes.push(value);
+ }
+ if(envelopes.length!==1)throw new Error('资讯接口响应校验失败：业务结果缺失或不唯一');
+ const envelope=z.object({code:z.number(),data:z.unknown()}).parse(envelopes[0]);
  if(envelope.code!==1)throw new Error('资讯接口业务失败');
- const records=z.array(z.record(z.string(),z.unknown())).parse(typeof envelope.data==='string'?JSON.parse(envelope.data):envelope.data);
+ const records=z.array(z.record(z.string(),z.unknown())).parse(typeof envelope.data==='string'?decodeToolJson(envelope.data,'notice-records'):envelope.data);
  const candidates:Candidate[]=[];let excluded=0;
  for(const row of records){const title=row['公告标题'],body=row['公告片段内容'],date=row['日期'];if(typeof title!=='string'||typeof body!=='string')continue;
   const publishedAt=typeof date==='string'&&dateValue.safeParse(date).success?date:null;
