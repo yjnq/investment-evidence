@@ -10,8 +10,7 @@ export function decodeToolJson(text:string,layer:string):unknown {
  const fenced=trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
  const payload=fenced?fenced[1]:trimmed;
  try{return JSON.parse(payload);}catch{
-  const hint=trimmed.replace(/[^\u3400-\u9fff\s。，：；！？（）]/g,'').slice(0,120);
-  console.error('ifind_json_invalid',{layer,shape:fenced?'fenced':trimmed.startsWith('{')?'object':trimmed.startsWith('[')?'array':'other',characters:trimmed.length,hint});
+  console.error('ifind_json_invalid',{layer,shape:fenced?'fenced':trimmed.startsWith('{')?'object':trimmed.startsWith('[')?'array':'other',characters:trimmed.length});
   throw new Error(`资讯接口响应校验失败（${layer}）：内容不是完整JSON，请重新检索`);
  }
 }
@@ -28,6 +27,12 @@ export function parseNoticeResponse(raw:unknown,start:string,end:string){
  if(envelopes.length!==1)throw new Error('资讯接口响应校验失败：业务结果缺失或不唯一');
  const envelope=z.object({code:z.number(),data:z.unknown()}).parse(envelopes[0]);
  if(envelope.code!==1)throw new Error('资讯接口业务失败');
+ // The vendor uses a documented-in-observation Markdown notice for an empty search.
+ // Recognize this exact message family only; arbitrary prose, auth errors and malformed JSON still fail.
+ if(typeof envelope.data==='string'){
+  const notice=envelope.data.replace(/[#>*_\s]/g,'');
+  if(/^查询结果抱歉[，,]本次(?:新闻|公告)搜索结果为空(?:可能原因|[。！!]|$)/.test(notice))return {candidates:[] as Candidate[],excluded:0,emptyReason:'上游返回无匹配结果，可缩短关键词或扩大日期窗口'};
+ }
  const records=z.array(z.record(z.string(),z.unknown())).parse(typeof envelope.data==='string'?decodeToolJson(envelope.data,'notice-records'):envelope.data);
  const candidates:Candidate[]=[];let excluded=0;
  for(const row of records){const title=row['公告标题'],body=row['公告片段内容'],date=row['日期'];if(typeof title!=='string'||typeof body!=='string')continue;

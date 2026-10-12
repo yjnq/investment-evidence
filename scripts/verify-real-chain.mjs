@@ -1,0 +1,20 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const root=process.env.TEST_BASE_URL||'http://127.0.0.1:3000';
+const headers={'Content-Type':'application/json','x-access-token':process.env.APP_ACCESS_TOKEN||''};
+async function state(){const r=await fetch(root+'/api/workspace');assert.equal(r.status,200);return r.json();}
+const before=await state();
+const event=before.events.find(e=>e.mode==='live'&&e.subject.includes('国泰君安'));
+assert.ok(event,'First import the verified CSRC material');
+const old=JSON.stringify(event.versions);
+const lead=JSON.parse(await readFile(new URL('../data/real-case-ifind-lead.json',import.meta.url),'utf8'));
+const r=await fetch(root+'/api/ingest',{method:'POST',headers,body:JSON.stringify(lead)});
+const result=await r.json();
+const after=await state();
+const updated=after.events.find(e=>e.id===event.id);
+const saved=after.materials.find(m=>m.title===lead.title);
+const merged=updated.versions.some(v=>v.materialIds.includes(saved?.id));
+const record={testedAt:new Date().toISOString(),http:r.status,error:result.error,mergedWithExistingEvent:merged,oldVersionsUnchanged:JSON.stringify(updated.versions.slice(0,event.versions.length))===old,stageBefore:event.versions.at(-1).stage,stageAfter:updated.versions.at(-1).stage,eventCountBefore:before.events.length,eventCountAfter:after.events.length};
+await writeFile('docs/real-chain-verification.json',JSON.stringify(record,null,2));
+console.log(JSON.stringify(record));
+assert.equal(r.status,200);assert.ok(merged,'AI matching must be reviewed if a separate event was created');assert.ok(record.oldVersionsUnchanged);assert.equal(record.stageAfter,record.stageBefore);

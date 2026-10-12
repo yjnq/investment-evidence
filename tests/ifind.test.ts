@@ -42,3 +42,7 @@ describe('公告结构化文本兼容',()=>{
   expect(()=>parseNoticeResponse(raw,'2025-01-01','2025-01-31')).toThrow('完整JSON');
  });
 });
+describe('供应商明确空结果',()=>{
+ it('将已观察的Markdown无结果说明视为合法空集合',()=>{const raw={result:{content:[{type:'text',text:JSON.stringify({code:1,data:'# 查询结果\n抱歉，本次新闻搜索结果为空\n## 可能原因\n时间参数区间过于严格'})}]}};const r=parseNoticeResponse(raw,'2025-01-01','2025-01-31');expect(r.candidates).toEqual([]);expect(r).toHaveProperty('emptyReason');});
+ it('不把未识别权限/异常文字当成无结果',()=>{const raw={result:{content:[{type:'text',text:JSON.stringify({code:1,data:'权限不足，请重新认证'})}]}};expect(()=>parseNoticeResponse(raw,'2025-01-01','2025-01-31')).toThrow('完整JSON');});
+});
