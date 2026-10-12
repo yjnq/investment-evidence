@@ -11,7 +11,9 @@ export const materialSchema = z.object({
  originalSource: z.string().trim().max(200).nullable(),
 });
 export type MaterialInput = z.infer<typeof materialSchema>;
+export const eventMatchSchema=z.object({eventId:z.string().min(1),reason:z.string().min(8).max(500),quote:z.string().min(4).max(1000)});
 export const extractionSchema = z.object({
+ match:eventMatchSchema.nullable().optional(),
  subject: z.string().min(1).max(100), target: z.string().min(1).max(100),
  transaction: z.string().min(1).max(120), title: z.string().min(1).max(200),
  stage: z.enum(['传出','筹划','签约','审批','完成','终止','未知']),
@@ -21,11 +23,12 @@ export const extractionSchema = z.object({
  replacesKey: z.string().max(100).nullable(), validUntil: dateValue,
  })).min(1).max(20),
 });
+export const modelExtractionSchema=extractionSchema.extend({match:eventMatchSchema.nullable()});
 export type Extraction = z.infer<typeof extractionSchema>;
 export type Material = MaterialInput & {id:string; fingerprint:string; fetchedAt:string; mode:'live'|'fixture'; revisionOf:string|null};
 export type Claim = Extraction['claims'][number] & {id:string; materialId:string; status:'未确认'|'有支持'|'已确认'|'有争议'|'被反驳'|'已更正'|'已失效'; weight:string; origin:string};
 export type Version = {id:string; number:number; createdAt:string; stage:Extraction['stage']; reason:string; claims:Claim[]; materialIds:string[]};
-export type Event = {id:string; identity:string; title:string; subject:string; target:string; transaction:string; mode:'live'|'fixture'; followed:boolean; versions:Version[]};
+export type Event = {id:string; identity:string; title:string; subject:string; target:string; transaction:string; mode:'live'|'fixture'; followed:boolean; versions:Version[]; reviewReason?:string};
 export type Task = {id:string; materialId:string; status:'processing'|'success'|'failed'; error:string|null; model:string|null; createdAt:string; finishedAt:string|null; extraction:Extraction|null};
 export type Notice = {id:string; eventId:string; versionId:string; text:string; createdAt:string};
 export type Workspace = {materials:Material[]; events:Event[]; tasks:Task[]; notices:Notice[]};
@@ -36,16 +39,39 @@ export const fingerprint = (m:MaterialInput) => hash(JSON.stringify([m.title,m.o
 export function validateExtraction(m:Material, extraction:Extraction){
  const result=extractionSchema.parse(extraction);
  for(const c of result.claims) if(!m.text.includes(c.quote)) throw new Error('引用校验失败：模型引用不在材料原文中');
+ if(result.match&&!m.text.includes(result.match.quote))throw new Error('事件匹配引用校验失败：匹配依据不在原文');
  for(const entity of [result.subject,result.target]) if(!m.text.includes(entity)) throw new Error('主体校验失败：主体或交易对象未出现在原文');
  return result;
 }
 const canonical = (s:string) => s.normalize('NFKC').replace(/\s+/g,'').toLowerCase();
+const entityName=(s:string)=>canonical(s).replace(/(股份有限公司|有限责任公司|有限公司|股份公司|公司)$/,'');
+const escapePattern=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+export function sameEntity(a:string,b:string,materials:Material[]){
+ if(entityName(a)===entityName(b))return true;
+ for(const m of materials){
+  if(!m.sourceVerified||m.sourceType!=='official')continue;
+  const text=m.text.replace(/\s+/g,'');
+  for(const [full,short] of [[a,b],[b,a]]){
+   const pattern=escapePattern(full.replace(/\s+/g,''))+'[（(](?:以下简称|简称)[“"「]?'+escapePattern(short.replace(/\s+/g,''))+'[”"」]?[）)]';
+   if(new RegExp(pattern).test(text))return true;
+  }
+ }return false;
+}
 export function applyExtraction(w:Workspace,m:Material,x:Extraction,now=new Date().toISOString()){
  validateExtraction(m,x);
  const identity=hash([m.mode,canonical(x.subject),canonical(x.target),canonical(x.transaction)].join('|'));
  let event=w.events.find(e=>e.identity===identity);
+ if(x.match){
+  const candidate=w.events.find(e=>e.id===x.match!.eventId&&e.mode===m.mode);
+  if(!candidate)throw new Error('事件匹配校验失败：候选事件不存在');
+  const candidateIds=new Set(candidate.versions.at(-1)?.materialIds??[]);
+  const sources=[m,...w.materials.filter(s=>candidateIds.has(s.id))];
+  if(!sameEntity(x.subject,candidate.subject,sources)||!sameEntity(x.target,candidate.target,sources)||canonical(x.transaction)!==canonical(candidate.transaction))throw new Error('事件匹配校验失败：主体、交易对象或交易批次不一致，需人工复核');
+  if(event&&event.id!==candidate.id)throw new Error('事件匹配校验失败：与已存在的事件身份冲突');
+  event=candidate;
+ }
  for(const c of x.claims) if(c.replacesKey&&!event?.versions.at(-1)?.claims.some(old=>old.key===c.replacesKey)) throw new Error('引用校验失败：更正或反驳指向不存在的陈述');
- if(!event){event={id:uid(),identity,title:x.title,subject:x.subject,target:x.target,transaction:x.transaction,mode:m.mode,followed:false,versions:[]};w.events.push(event);}
+ if(!event){event={id:uid(),identity,title:x.title,subject:x.subject,target:x.target,transaction:x.transaction,mode:m.mode,followed:false,versions:[]};const similar=w.events.find(e=>e.mode===m.mode&&entityName(e.subject)===entityName(x.subject)&&entityName(e.target)===entityName(x.target));if(similar)event.reviewReason='存在相同主体与交易对象的另一档案；交易批次不同，保持分开，待人工复核';w.events.push(event);}
  if(event.versions.some(v=>v.materialIds.includes(m.id))) return event;
  const previous=event.versions.at(-1);
  const claims:Claim[]=structuredClone(previous?.claims??[]);
@@ -68,9 +94,15 @@ export function applyExtraction(w:Workspace,m:Material,x:Extraction,now=new Date
  }
  if(!changed&&previous)return event;
  // Older and weak sources cannot overwrite the last established business stage.
- const lastOfficialDate=previous?Math.max(0,...previous.materialIds.map(id=>w.materials.find(s=>s.id===id)).filter(s=>s?.sourceType==='official'&&s.sourceVerified&&!s.originalSource).map(s=>Date.parse(s?.publishedAt||'1970-01-01'))):0;
- const stage=m.sourceType==='official'&&m.sourceVerified&&!m.originalSource&&((m.publishedAt&&Date.parse(m.publishedAt)>=lastOfficialDate)||(!previous&&lastOfficialDate===0))?x.stage:previous?.stage??'未知';
- const version:Version={id:uid(),number:(previous?.number??0)+1,createdAt:now,stage,reason:`新增《${m.title}》；${x.claims.map(c=>({support:'支持',refute:'反驳',correct:'更正',supplement:'补充'}[c.relation])).filter((v,i,a)=>a.indexOf(v)===i).join('、')}相关陈述`,claims,materialIds:[...new Set([...(previous?.materialIds??[]),m.id])]};
+ const officialSources=(previous?.materialIds??[]).map(id=>w.materials.find(s=>s.id===id)).filter((s):s is Material=>!!s&&s.sourceType==='official'&&s.sourceVerified&&!s.originalSource);
+ // Order business progress by the stated occurrence time where known. This never fills publishedAt.
+ const stageDate=(s:Material)=>s.occurredAt??s.publishedAt;
+ const priorUnknown=officialSources.some(s=>!stageDate(s));
+ const lastStageTime=Math.max(0,...officialSources.map(s=>Date.parse(stageDate(s)??'1970-01-01')));
+ const incomingStageTime=stageDate(m);
+ const mayAdvance=!previous||(incomingStageTime&&!priorUnknown&&Date.parse(incomingStageTime)>=lastStageTime);
+ const stage=m.sourceType==='official'&&m.sourceVerified&&!m.originalSource&&mayAdvance?x.stage:previous?.stage??'未知';
+ const version:Version={id:uid(),number:(previous?.number??0)+1,createdAt:now,stage,reason:`${x.match?`归入已有事件：${x.match.reason}。`:previous?'事件身份一致。':'建立独立事件。'}新增《${m.title}》；${x.claims.map(c=>({support:'支持',refute:'反驳',correct:'更正',supplement:'补充'}[c.relation])).filter((v,i,a)=>a.indexOf(v)===i).join('、')}相关陈述`,claims,materialIds:[...new Set([...(previous?.materialIds??[]),m.id])]};
  event.versions.push(version);
  if(event.followed)w.notices.unshift({id:uid(),eventId:event.id,versionId:version.id,text:`${event.title} · V${version.number}：${version.reason}`,createdAt:now});
  return event;
