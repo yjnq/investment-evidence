@@ -25,7 +25,7 @@ export default function DemoRecorder({ready,onScene}:{ready:boolean;onScene:(sce
   try{
    setMessage('请选择共享当前“知序”标签页。共享成功后自动开始演示，无需手动切换。');
    const s=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:15},audio:false,...{preferCurrentTab:true,systemAudio:'exclude',monitorTypeSurfaces:'exclude'}});stream.current=s;
-   const mime=['video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+   const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
    const r=new MediaRecorder(s,{...(mime?{mimeType:mime}:{}),videoBitsPerSecond:3500000});recorder.current=r;const chunks:BlobPart[]=[];
    r.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
    r.onstop=()=>{s.getTracks().forEach(t=>t.stop());const type=r.mimeType,ext=type.includes('mp4')?'mp4':'webm';const name=`知序_产品演示_${total}秒.${ext}`;const blob=new Blob(chunks,{type});const url=URL.createObjectURL(blob);setDownload(url);setFilename(name);setMessage(`录制完成，实际时长约${Math.round((Date.now()-start.current)/1000)}秒。请下载后检查。`);const a=document.createElement('a');a.href=url;a.download=name;a.click();};

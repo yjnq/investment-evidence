@@ -1,0 +1,10 @@
+{
+  "testedAt": "2026-10-12T07:19:44.767Z",
+  "http": 200,
+  "mergedWithExistingEvent": true,
+  "oldVersionsUnchanged": true,
+  "stageBefore": "审批",
+  "stageAfter": "审批",
+  "eventCountBefore": 4,
+  "eventCountAfter": 4
+}

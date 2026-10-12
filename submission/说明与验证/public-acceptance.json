@@ -1,0 +1,16 @@
+{
+  "testedAt": "2026-10-12T08:46:51.074Z",
+  "url": "https://investment-evidence-production.up.railway.app",
+  "ok": true,
+  "results": [
+    "公网读取PostgreSQL成功",
+    "无口令写入被拒绝",
+    "公网关注操作成功",
+    "真实历史线索经GPT归入同一事件，旧版本与审批阶段保留",
+    "公网重复提交无重复版本和通知",
+    "公网iFinD检索成功：5条候选"
+  ],
+  "realEventId": "1e873311-c6dc-429d-b225-b2434e5e4098",
+  "realVersions": 2,
+  "notices": 5
+}

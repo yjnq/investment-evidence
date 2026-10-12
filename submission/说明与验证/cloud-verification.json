@@ -1,0 +1,19 @@
+{
+  "runId": "iteration-2-20261012-d",
+  "startedAt": "2026-10-12T08:20:07.441Z",
+  "source": "Railway private deployment logs, CLOUD_SMOKE_RESULT",
+  "ok": true,
+  "publicExposure": false,
+  "checks": [
+    {"name":"database","ok":true,"http":200},
+    {"name":"unauthorized-write","ok":true,"http":400},
+    {"name":"gpt-real-material","ok":true,"http":200,"eventId":"1e873311-c6dc-429d-b225-b2434e5e4098","claims":4,"duplicate":true},
+    {"name":"ifind-live-search","ok":true,"http":200,"candidates":5},
+    {"name":"versions-notices-and-idempotency","ok":true,"versions":5,"notices":4}
+  ],
+  "notes": [
+    "真实GPT首次云端抽取发生在批次a，HTTP200，形成4条陈述。批次d验证已保存结果与重复输入幂等，不重复调用模型。",
+    "批次a/b/c的iFinD失败未被删除；最终修正供应商Markdown空结果说明的识别，并缩短过长查询关键词后，批次d真实检索返回5条。",
+    "模型引用存在性、格式与业务阶段校验已执行，不代表全场景语义准确率。"
+  ]
+}

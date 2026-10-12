@@ -1,0 +1,12 @@
+{
+  "file": "知序_产品演示_106秒_提交版.mp4",
+  "durationSeconds": 106.0,
+  "resolution": "1920x1080",
+  "fps": 24,
+  "bytes": 2371320,
+  "sha256": "1276fe8f5773734fbb9ba2db3c5bead30546d7c0fd9fe260b279769545bb6884",
+  "decodePassed": true,
+  "scenes": 8,
+  "method": "真实线上页面自动导航录屏；裁去底部编码瑕疵后转码为H.264 MP4，未更改产品数据",
+  "audio": "无音轨；逐幕中文字幕"
+}
