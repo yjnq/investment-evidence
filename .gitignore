@@ -9,3 +9,8 @@ test-results/
 /数据接入验证/
 /项目开发交接与分析框架.md
 next-env.d.ts
+/submission/评审访问口令.txt
+/submission/*.webm
+/submission/*.mp4
+/submission/*.zip
+/submission/video-qa/

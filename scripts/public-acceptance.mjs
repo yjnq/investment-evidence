@@ -1,0 +1,20 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const root='https://investment-evidence-production.up.railway.app';
+const token=(await readFile('.data/cloud-access.txt','utf8')).trim();
+const headers={'Content-Type':'application/json','x-access-token':token,Origin:root};
+async function call(path,body,auth=true){const r=await fetch(root+path,{method:body===undefined?'GET':'POST',headers:auth?headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(110000)});return {status:r.status,data:await r.json()};}
+const results=[];
+let w=(await call('/api/workspace')).data;
+assert.equal(w.configuration.database,'PostgreSQL');results.push('公网读取PostgreSQL成功');
+const denied=await call('/api/follow',{eventId:w.events[0].id,followed:true},false);assert.notEqual(denied.status,200);results.push('无口令写入被拒绝');
+const real=w.events.find(e=>e.mode==='live'&&e.subject.includes('国泰君安'));assert.ok(real);
+const follow=await call('/api/follow',{eventId:real.id,followed:true});assert.equal(follow.status,200);results.push('公网关注操作成功');
+const material=JSON.parse(await readFile('data/real-case-ifind-lead.json','utf8'));
+const old=JSON.stringify(real.versions);const ingestion=await call('/api/ingest',material);assert.equal(ingestion.status,200,ingestion.data.error);w=(await call('/api/workspace')).data;
+const event=w.events.find(e=>e.id===real.id);const saved=w.materials.find(m=>m.title===material.title);
+assert.ok(event.versions.some(v=>v.materialIds.includes(saved.id)),'真实材料未归入同一事件');assert.equal(JSON.stringify(event.versions.slice(0,real.versions.length)),old);assert.equal(event.versions.at(-1).stage,'审批');results.push('真实历史线索经GPT归入同一事件，旧版本与审批阶段保留');
+const versions=event.versions.length,notices=w.notices.length;await call('/api/ingest',material);const duplicate=(await call('/api/workspace')).data;assert.equal(duplicate.events.find(e=>e.id===real.id).versions.length,versions);assert.equal(duplicate.notices.length,notices);results.push('公网重复提交无重复版本和通知');
+const search=await call('/api/search',{query:'国泰君安 海通证券',start:'2024-09-01',end:'2024-09-30'});assert.equal(search.status,200);results.push('公网iFinD检索成功：'+search.data.candidates.length+'条候选');
+const report={testedAt:new Date().toISOString(),url:root,ok:true,results,realEventId:real.id,realVersions:versions,notices};await writeFile('docs/public-acceptance.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+await writeFile('submission/评审访问口令.txt','产品地址：'+root+'\n写入口令：'+token+'\n在页面右上角“设置写入口令”输入。请仅随笔试材料提供给评审，不要放入公开仓库。\n',{mode:0o600});
